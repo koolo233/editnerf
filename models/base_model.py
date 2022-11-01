@@ -34,29 +34,39 @@ class NeRF(nn.Module):
         self.get_cached = None  # Updated by render_path to get cache
         self.activation = F.relu
 
+        # shape共享分支
         if shared_shape:
             self.mean_network = nn.Sequential(*[nn.Linear(input_ch, W_mean)], *[nn.Sequential(nn.ReLU(), nn.Linear(W_mean, W_mean)) for i in range(D_mean - 2)])
             self.mean_output = nn.Sequential(nn.ReLU(), nn.Linear(W_mean, W_instance))
 
+        # 是否将style_dim分解为shape和rgb
         if separate_codes:
             style_dim = style_dim // 2
 
         self.style_dim = style_dim
         self.embed_size = style_dim if embed_dim < 0 else embed_dim
 
+        # 输入维度
+        # 若启用shape code和rgb code则输入维度为原来的维度+style_dim
         pts_inp_dim = (input_ch + self.embed_size) if use_styles else input_ch
         view_inp_dim = (input_ch_views + self.embed_size) if use_styles else input_ch_views
 
+        # instance 分支
         self.instance_network = nn.Sequential(*[nn.Sequential(nn.Linear(pts_inp_dim, W_instance), nn.ReLU())], *[nn.Sequential(nn.Linear(W_instance, W_instance), nn.ReLU()) for i in range(D_instance - 1)])
+        # instance 到 fusion
+        # 准确说应该是instance+shape到fusion
         self.instance_to_fusion = nn.Linear(pts_inp_dim + W_instance, W_fusion)
+        # fusion
         self.fusion_network = nn.Sequential(*[nn.Sequential(nn.Linear(W_fusion, W_fusion), nn.ReLU()) for i in range(D_fusion - 1)])
 
         if use_viewdirs:
+            # 体素密度sigma输出
             if D_sigma > 1:
                 self.sigma_linear = nn.Sequential(*[nn.Sequential(nn.Linear(W_fusion, W_sigma), nn.ReLU())], *[nn.Sequential(nn.Linear(W_sigma, W_sigma), nn.ReLU()) for _ in range(D_sigma - 2)], *[nn.Linear(W_sigma, 1)])
             else:
                 self.sigma_linear = nn.Linear(W_fusion, 1)
 
+            # rgb输出
             self.bottleneck_linear = nn.Linear(W_fusion, W_bottleneck)
             self.rgb_network = nn.Sequential(*[nn.Sequential(nn.Linear(view_inp_dim + W_bottleneck, W_rgb), nn.ReLU())], *[nn.Sequential(nn.Linear(W_rgb, W_rgb), nn.ReLU()) for i in range(D_rgb - 2)])
             self.rgb_linear = nn.Linear(W_rgb, 3)
@@ -72,8 +82,11 @@ class NeRF(nn.Module):
         # self.num_parameters()
 
     def forward(self, x, styles, alpha=None, feature=None):
+
+        # 输入的坐标向量以及视角向量
         input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)
 
+        # 获得shape和color的维度
         if self.separate_codes:
             styles_sigma, styles_rgb = styles[:, :self.style_dim], styles[:, self.style_dim:]
         else:
@@ -85,10 +98,12 @@ class NeRF(nn.Module):
             if feature is None:
                 # Compute mean shape features
                 if self.shared_shape:
+                    # 共享分支
                     mean_output = self.mean_output(self.mean_network(input_pts))
 
                 # Prepare input to instance network
                 if self.use_styles:
+                    # shape instance分支
                     h = torch.cat([input_pts, self.style_linears[0](styles_sigma)], dim=1)
                 else:
                     h = input_pts
@@ -139,15 +154,19 @@ class NeRF(nn.Module):
             outputs = self.output_linear(h)
         return outputs
 
+    # color edit params
     def color_branch(self):
         return list(self.rgb_linear.parameters()) + list(self.rgb_network.parameters()) + list(self.style_linears[2].parameters()) + list(self.bottleneck_linear.parameters())
 
+    # shape edit params
     def shape_branch(self):
         return list(self.sigma_linear.parameters())
 
+    # shape edit params
     def fusion_shape_branch(self):
         return list(self.fusion_network.parameters()) + list(self.sigma_linear.parameters())
 
+    # transfer to numpy
     def num_parameters(self):
         total = 0
         for n, p in self.named_parameters():
