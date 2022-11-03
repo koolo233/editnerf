@@ -164,11 +164,12 @@ def train():
 
         if i % args.i_print == 0 or i == 1:
             end_time = time.time()
-            iter_time = (end_time - begin_time) / i
+            iter_time = (end_time - begin_time) / args.i_print
             log_str = f"[TRAIN] Step time: {iter_time:.4f} Iter: {i} Loss: {loss.item()} PSNR: {psnr.item()} PSNR0: {psnr0} Var loss: {var_loss} Var loss coarse: {var_loss_coarse} Weight change loss: {weight_change_loss}"
             with open(os.path.join(basedir, expname, 'log.txt'), 'a+') as f:
                 f.write(log_str + '\n')
             print(log_str)
+            begin_time = time.time()
 
         global_step += 1
 
