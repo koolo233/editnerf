@@ -79,12 +79,15 @@ def create_nerf(args, return_styles=False):
                  D_rgb=args.D_rgb, W_rgb=args.W_rgb, W_bottleneck=args.W_bottleneck, input_ch=input_ch, output_ch=output_ch, input_ch_views=input_ch_views, style_dim=style_dim,
                  embed_dim=args.embed_dim, style_depth=args.style_depth, shared_shape=args.shared_shape, use_viewdirs=args.use_viewdirs, separate_codes=args.separate_codes, use_styles=args.use_styles).to(device)
 
+    model = torch.nn.DataParallel(model)
+
     grad_vars = list(model.parameters())
 
     model_fine = None
     if args.N_importance > 0:
         model_fine = NeRF(D_mean=args.D_mean, W_mean=args.W_mean, D_instance=args.D_instance, W_instance=args.W_instance, D_fusion=args.D_fusion, W_fusion=args.W_fusion, D_sigma=args.D_sigma,
                           D_rgb=args.D_rgb, W_rgb=args.W_rgb, W_bottleneck=args.W_bottleneck, input_ch=input_ch, output_ch=output_ch, input_ch_views=input_ch_views, style_dim=style_dim, embed_dim=args.embed_dim, style_depth=args.style_depth, shared_shape=args.shared_shape, use_viewdirs=args.use_viewdirs, separate_codes=args.separate_codes, use_styles=args.use_styles).to(device)
+        model_fine = torch.nn.DataParallel(model_fine)
         grad_vars += list(model_fine.parameters())
 
     def network_query_fn(inputs, styles, viewdirs, network_fn, alpha, feature): return run_network(inputs, styles, viewdirs, network_fn, alpha, feature,
