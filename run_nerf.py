@@ -1,5 +1,6 @@
 import os
 import copy
+import time
 
 import numpy as np
 import torch
@@ -64,6 +65,7 @@ def train():
             os.remove(os.path.join(basedir, expname, 'log.txt'))
     start = start + 1
 
+    begin_time = time.time()
     for i in range(start, args.n_iters + 1):
         # Sample random ray batch
         batch_rays, target_s, style, H, W, focal, near, far, viewdirs_reg = dataset.get_data_batch(train_fn=render_kwargs_train, optimizer=optimizer, loss=loss)
@@ -161,7 +163,9 @@ def train():
             print('Saved train set')
 
         if i % args.i_print == 0 or i == 1:
-            log_str = f"[TRAIN] Iter: {i} Loss: {loss.item()} PSNR: {psnr.item()} PSNR0: {psnr0} Var loss: {var_loss} Var loss coarse: {var_loss_coarse} Weight change loss: {weight_change_loss}"
+            end_time = time.time()
+            iter_time = (end_time - begin_time) / i
+            log_str = f"[TRAIN] Step time: {iter_time:.4f} Iter: {i} Loss: {loss.item()} PSNR: {psnr.item()} PSNR0: {psnr0} Var loss: {var_loss} Var loss coarse: {var_loss_coarse} Weight change loss: {weight_change_loss}"
             with open(os.path.join(basedir, expname, 'log.txt'), 'a+') as f:
                 f.write(log_str + '\n')
             print(log_str)
