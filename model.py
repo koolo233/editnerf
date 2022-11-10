@@ -111,10 +111,10 @@ def create_nerf(args, return_styles=False):
 
     if ckpt is not None and not args.skip_loading:
         start = ckpt['global_step']
-        ckpt_true = {k.replace("module.", ""): v for k, v in ckpt['network_fn_state_dict'].items()}
+        ckpt_true = {"module." + k: v for k, v in ckpt['network_fn_state_dict'].items()}
         model.load_state_dict(ckpt_true)
         if model_fine is not None:
-            ckpt_fine_true = {k.replace("module.", ""): v for k, v in ckpt['network_fn_state_dict'].items()}
+            ckpt_fine_true = {"module." + k: v for k, v in ckpt['network_fn_state_dict'].items()}
             model_fine.load_state_dict(ckpt_fine_true)
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
     ##########################
