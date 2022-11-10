@@ -1,4 +1,12 @@
 .vscode/
 .DS_Store/
 .idea/
-
+data/
+__pycache__/
+*.zip
+logs/
+ui/cars/
+ui/dosovitskiy_chairs/
+ui/photoshapes/
+ui/.ipynb_checkpoints/
+weights/
